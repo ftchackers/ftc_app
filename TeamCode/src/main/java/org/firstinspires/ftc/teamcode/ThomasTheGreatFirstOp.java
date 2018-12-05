@@ -29,14 +29,13 @@
 
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
-
+import com.qualcomm.robotcore.hardware.CRServo;
 
 /**
  * This file contains an minimal example of a Linear "OpMode". An OpMode is a 'program' that runs in either
@@ -51,17 +50,19 @@ import com.qualcomm.robotcore.util.Range;
  * Remove or comment out the @Disabled line to add this opmode to the Driver Station OpMode list
  */
 
-@TeleOp(name="OpMode1", group="Opmode")
+@TeleOp(name="T_Beast", group="Opmode")
 //@Disabled
-public class MyFirstOp_linear extends LinearOpMode {
+public class ThomasTheGreatFirstOp extends LinearOpMode {
 
     // Declare OpMode members.
     private ElapsedTime runtime = new ElapsedTime();
     private DcMotor leftDrive = null;
     private DcMotor rightDrive = null;
     private DcMotor armMotor = null;
-    private DcMotor scoopMotor = null;
-    public Servo scoopServo   = null;
+    //private DcMotor armMotor2 = null;
+    public  Servo servoHook = null;
+    public  CRServo   servoScoop  = null;
+    public  Servo servoBasket = null;
     double          clawOffset      = 0;                       // Servo mid position
     final double    CLAW_SPEED      = 0.02 ;                   // sets rate to move servo
     public static final double MID_SERVO       =  0.5;
@@ -77,9 +78,10 @@ public class MyFirstOp_linear extends LinearOpMode {
         leftDrive  = hardwareMap.get(DcMotor.class, "motorLeft");
         rightDrive = hardwareMap.get(DcMotor.class, "motorRight");
         armMotor = hardwareMap.get(DcMotor.class, "motorArm");
-        scoopMotor = hardwareMap.get(DcMotor.class, "motorScoop");
-        scoopServo = hardwareMap.get(Servo.class, "servoScoop");
-
+        //armMotor2 = hardwareMap.get(DcMotor.class, "motorArm2");
+        servoScoop =  hardwareMap.get(CRServo.class, "servoScoop");
+        servoHook = hardwareMap.get(Servo.class, "servoHook");
+        servoBasket = hardwareMap.get(Servo.class, "servoBasket");
 
         // Most robots need the motor on one side to be reversed to drive forward
         // Reverse the motor that runs backwards when connected directly to the battery
@@ -90,15 +92,15 @@ public class MyFirstOp_linear extends LinearOpMode {
         leftDrive.setPower(0);
         rightDrive.setPower(0);
         armMotor.setPower(0);
-        scoopMotor.setPower(0);
-
+        //armMotor2.setPower(0);
+        servoHook.setPosition(0);
 
         // Set all motors to run without encoders.
         // May want to use RUN_USING_ENCODERS if encoders are installed.
         leftDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         rightDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         armMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        scoopMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        //armMotor2.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
 
         // Wait for the game to start (driver presses PLAY)
@@ -112,7 +114,6 @@ public class MyFirstOp_linear extends LinearOpMode {
             double leftPower;
             double rightPower;
             double armPower;
-            double scoopPower;
 
             // Choose to drive using either Tank Mode, or POV Mode
             // Comment out the method that's not used.  The default below is POV.
@@ -121,14 +122,25 @@ public class MyFirstOp_linear extends LinearOpMode {
             // - This uses basic math to combine motions and is easier to drive straight.
             double drive =  gamepad1.left_stick_y;
             double turn  =  -gamepad1.right_stick_x;
+            boolean unhook  = gamepad2.dpad_up;  //unhoook before landing
+            boolean hook  = gamepad2.dpad_down; //hook when uplifting
+
+            boolean fullArmPower = gamepad2.left_bumper;  //full power when
+
+            boolean scoop = gamepad2.y;
+            double basket = gamepad2.right_stick_x;
             leftPower    = Range.clip(drive + turn, -1.0, 1.0) ;
             rightPower   = Range.clip(drive - turn, -1.0, 1.0) ;
 
 
             armPower = gamepad2.left_stick_y;
-            armPower = Range.clip(armPower, -1.0, 1.0) ;
-            scoopPower  =  -gamepad2.right_stick_x;
-            scoopPower = Range.clip(scoopPower, -1.0, 1.0) ;
+
+            if(fullArmPower)
+                armPower = Range.clip(armPower, -1.0, 1.0) ;
+            else
+                armPower = Range.clip(armPower/2, -1.0, 1.0) ;
+
+
 
 
 
@@ -142,7 +154,9 @@ public class MyFirstOp_linear extends LinearOpMode {
             leftDrive.setPower(leftPower);
             rightDrive.setPower(rightPower);
             armMotor.setPower(armPower);
-            scoopMotor.setPower(scoopPower);
+            //armMotor2.setPower(armPower);
+
+            servoBasket.setPosition(basket);
 
             // Use gamepad left & right Bumpers to open and close the claw
             if (gamepad2.right_bumper)
@@ -150,14 +164,26 @@ public class MyFirstOp_linear extends LinearOpMode {
             else if (gamepad2.left_bumper)
                 clawOffset -= CLAW_SPEED;
 
+
+            System.out.println(unhook);
+            if (unhook)
+                servoHook.setPosition(1);
+
+            if(hook)
+                servoHook.setPosition(0);
+            if (scoop)
+                servoScoop.setPower(-1);
+
+
             // Move both servos to new position.  Assume servos are mirror image of each other.
             clawOffset = Range.clip(clawOffset, -0.5, 0.5);
-            scoopServo.setPosition(MID_SERVO + clawOffset);
+
 
 
 
             // Show the elapsed game time and wheel power.
             telemetry.addData("Status", "Run Time: " + runtime.toString());
+            telemetry.addData("Hook", unhook);
             telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftPower, rightPower);
             telemetry.update();
         }
